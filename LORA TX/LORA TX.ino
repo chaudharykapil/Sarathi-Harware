@@ -1,98 +1,232 @@
-  // Lora Ra-02 Bidirectional Communication With Esp8266
-
+#include <TinyGPS++.h>
+#include <SoftwareSerial.h>
+#include <ESP8266WiFi.h>
 #include <LoRa.h>
-#include <ESP8266HTTPClient.h>
-#include <WiFiClient.h>
-#include<ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
+
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_ADXL345_U.h>
 
 #define SS 15
-#define RST 16
-#define DIO0 4
+#define RST 2
+#define DIO0 A0
 
-const char* ssid = "Tenda_3A5220";
-const char* password = "DILLELEMERA";
-
+TinyGPSPlus gps;
+SoftwareSerial SerialGPS(D3, 10); 
+Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified();
 
 String data = "";
-bool stringComplete = false;      // Whether the string is complete
-WiFiClient client;
-HTTPClient http;
-String serverName = "http://kapil829.pythonanywhere.com";
+bool stringComplete = false;
+
+//const char* ssid = "Tenda_3A5220";
+//const char* password = "DILLELEMERA";
+//const char* ssid = "Tenda_410840";
+//const char* password = "Dillelemera";
+const char* ssid = "Ashish";
+const char* password = "12123456";
+
+//const char* ssid = "KAPIL";
+//const char* password = "pooja8279";
+
+float Latitude , Longitude;
+int year , month , date, hour , minute , second;
+String DateString , TimeString , LatitudeString , LongitudeString;
+float oldx = 0,oldy = 0,oldz = 0;
+
+WiFiServer server(80);
 void setup()
 {
   Serial.begin(9600);
-  while (!Serial);  
-  
+  SerialGPS.begin(9600);
+  Serial.println();
+  Serial.print("Connecting");
+  WiFi.begin(ssid, password);
   LoRa.setPins(SS, RST, DIO0);
   if (!LoRa.begin(433E6)) {
     Serial.println("LoRa Error");
     delay(100);
-    while (1);
   }
   else{
     Serial.println("LORA Device Activated");
   }
-  data.reserve(200);        // Max Number of character Sended through a Single mssage
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    yield();
+  
+  data.reserve(200);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
   }
-  Serial.println("Connected to the WiFi network");
+  if(!accel.begin())
+   {
+      Serial.println("No valid sensor found");
+   }
+   else{
+     Serial.println("Accelerometer Connected");
+   }
+  Serial.println("");
+  Serial.println("WiFi connected");
+
+  server.begin();
+  Serial.println("Server started");
+  Serial.println(WiFi.localIP());
+    
 }
 
-
- 
 void loop()
 {
-  //SendData();
-  RecieveData();
-  delay(200);
+  SendData();
+  while (SerialGPS.available() > 0)
+    if (gps.encode(SerialGPS.read())){
+      if(gps.satellites.value()){    
+        //Serial.println(gps.satellites.value());
+      }
+      if (gps.location.isValid())
+      {
+        Latitude = gps.location.lat();
+        LatitudeString = String(Latitude , 6);
+        Longitude = gps.location.lng();
+        LongitudeString = String(Longitude , 6);
+      }
+
+      if (gps.date.isValid())
+      {
+        DateString = "";
+        date = gps.date.day();
+        month = gps.date.month();
+        year = gps.date.year();
+
+        if (date < 10)
+        DateString = '0';
+        DateString += String(date);
+
+        DateString += " / ";
+
+        if (month < 10)
+        DateString += '0';
+        DateString += String(month);
+        DateString += " / ";
+
+        if (year < 10)
+        DateString += '0';
+        DateString += String(year);
+      }
+
+      if (gps.time.isValid())
+      {
+        TimeString = "";
+        hour = gps.time.hour()+ 5; //adjust UTC
+        minute = gps.time.minute();
+        second = gps.time.second();
+    
+        if (hour < 10)
+        TimeString = '0';
+        TimeString += String(hour);
+        TimeString += " : ";
+
+        if (minute < 10)
+        TimeString += '0';
+        TimeString += String(minute);
+        TimeString += " : ";
+
+        if (second < 10)
+        TimeString += '0';
+        TimeString += String(second);
+      }
+      
+
+    }
+  WiFiClient client = server.available();
+  if (!client)
+  {
+    return;
+  }
+
+  //Response
+  String s = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n <!DOCTYPE html> <html> <head> <title>NEO-6M GPS Readings</title> <style>";
+  s += "table, th, td {border: 1px solid blue;} </style> </head> <body> <h1  style=";
+  s += "font-size:300%;";
+  s += " ALIGN=CENTER>NEO-6M GPS Readings</h1>";
+  s += "<p ALIGN=CENTER style=""font-size:150%;""";
+  s += "> <b>Location Details</b></p> <table ALIGN=CENTER style=";
+  s += "width:50%";
+  s += "> <tr> <th>Latitude</th>";
+  s += "<td ALIGN=CENTER >";
+  s += LatitudeString;
+  s += "</td> </tr> <tr> <th>Longitude</th> <td ALIGN=CENTER >";
+  s += LongitudeString;
+  s += "</td> </tr> <tr>  <th>Date</th> <td ALIGN=CENTER >";
+  s += DateString;
+  s += "</td></tr> <tr> <th>Time</th> <td ALIGN=CENTER >";
+  s += TimeString;
+  s += "</td>  </tr> </table> ";
+ 
   
+  if (gps.location.isValid())
+  {
+    s += "<p align=center><a style=""color:RED;font-size:125%;"" href=""http://maps.google.com/maps?&z=15&mrt=yp&t=k&q=";
+    s += LatitudeString;
+    s += "+";
+    s += LongitudeString;
+    s += """ target=""_top"">Click here</a> to open the location in Google Maps.</p>";
+    
+  }
+
+  s += "</body> </html> \n";
+
+  client.print(s);
+  
+  delay(100);
+
 }
+
 void RecieveData(){
   stringComplete = false;
   int packetSize = LoRa.parsePacket();
   if (packetSize) {
     while (LoRa.available()) {
       Serial.print("Message Received : ");
-      String coord = LoRa.readString();
-      Serial.println(coord);
-      sendToApi(coord);
-    }
-  }
-}
-void sendToApi(String latlong){
-  if(WiFi.status() == WL_CONNECTED){
-    WiFiClient cl;
-    HTTPClient http;
-    String serverPath = serverName + "/?latlong=" + latlong;
-    http.begin(cl,serverPath);
-    int code = http.GET();
-    if(code > 0){
-      String payload = http.getString();
-      Serial.println(payload);
-      delay(2000);
-    }
-    else{
-      Serial.print("Error code");
-      Serial.println(code);
+      Serial.println(LoRa.readString());
     }
   }
 }
 
+void SendData() {
 
+  if(gps.location.isValid() && checkAcceident()){
+  //if(checkAcceident()){
+    Serial.print("Sending Message: ");
+    Serial.println(LatitudeString + " " + LongitudeString);
 
+    LoRa.beginPacket();
+    //LoRa.print("28.45084 77.29558");
+    LoRa.print(LatitudeString + " " + LongitudeString);
+    LoRa.endPacket();
+    delay(200);
+    
+    
+  }
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
+bool checkAcceident(){
+  sensors_event_t event; 
+  accel.getEvent(&event);
+  float x = event.acceleration.x;
+  float y = event.acceleration.y;
+  float z = event.acceleration.z;
+  //Serial.print("X: "); Serial.print(x); Serial.print("");
+  //Serial.print("Y: "); Serial.print(y); Serial.print("");
+  //Serial.print("Z: "); Serial.print(z); Serial.print("");
+  float mag = sqrt(sq(x) + sq(y) + sq(z));
+  
+  //oldx = x;
+  //oldy = y;
+  //oldz = z;
+  //Serial.println(mag);
+  if(mag > 20){
+    return true;
+  }
+  else{
+    return false;
+  }
+  //Serial.println("m/s^2 ");
+}
