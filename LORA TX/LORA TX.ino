@@ -3,9 +3,9 @@
 #include <ESP8266WiFi.h>
 #include <LoRa.h>
 
-#include <Wire.h>
+#include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
-#include <Adafruit_ADXL345_U.h>
+#include <Wire.h>
 
 #define SS 15
 #define RST D0
@@ -13,7 +13,7 @@
 
 TinyGPSPlus gps;
 SoftwareSerial SerialGPS(D3, 10); 
-Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified();
+Adafruit_MPU6050 mpu;
 
 String data = "";
 bool stringComplete = false;

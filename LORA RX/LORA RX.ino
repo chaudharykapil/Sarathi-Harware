@@ -7,7 +7,7 @@
 #include <ESP8266HTTPClient.h>
 
 #define SS 15
-#define RST D0
+#define RST D4
 #define DIO0 D3
 
 //const char* ssid = "Tenda_3A5220";
@@ -24,8 +24,8 @@ const char* password = "12123456";
 String data = "";
 bool stringComplete = false;      // Whether the string is complete
 long long lasttime = 0;
-int led = D3; 
-int buzzer = D4;
+int led = D2; 
+int buzzer = D1;
 WiFiClient client;
 HTTPClient http;
 String serverName = "http://kapil829.pythonanywhere.com";
