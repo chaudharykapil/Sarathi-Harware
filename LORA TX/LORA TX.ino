@@ -8,8 +8,8 @@
 #include <Adafruit_ADXL345_U.h>
 
 #define SS 15
-#define RST 2
-#define DIO0 A0
+#define RST D0
+#define DIO0 D4
 
 TinyGPSPlus gps;
 SoftwareSerial SerialGPS(D3, 10); 
