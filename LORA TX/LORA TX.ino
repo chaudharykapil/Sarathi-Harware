@@ -139,9 +139,9 @@ void setup()
 
 void loop()
 {
-  SendDataTest();
+  //SendDataTest();
   
-  //SendData();
+  SendData();
   while (SerialGPS.available() > 0)
     if (gps.encode(SerialGPS.read())){
       if(gps.satellites.value()){    
