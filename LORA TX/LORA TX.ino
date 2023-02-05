@@ -8,12 +8,12 @@
 #include <Wire.h>
 
 #define SS 15
-#define RST D0
-#define DIO0 D4
+#define RST D4
+#define DIO0 D0
 
 TinyGPSPlus gps;
 SoftwareSerial SerialGPS(D3, 10); 
-Adafruit_MPU6050 mpu;
+Adafruit_MPU6050 accel;
 
 String data = "";
 bool stringComplete = false;
@@ -22,8 +22,8 @@ bool stringComplete = false;
 //const char* password = "DILLELEMERA";
 //const char* ssid = "Tenda_410840";
 //const char* password = "Dillelemera";
-const char* ssid = "Ashish";
-const char* password = "12123456";
+const char* ssid = "Samsung";
+const char* password = "kapil8279";
 
 //const char* ssid = "KAPIL";
 //const char* password = "pooja8279";
@@ -34,6 +34,70 @@ String DateString , TimeString , LatitudeString , LongitudeString;
 float oldx = 0,oldy = 0,oldz = 0;
 
 WiFiServer server(80);
+
+void INITMPU(){
+  accel.setAccelerometerRange(MPU6050_RANGE_8_G);
+  Serial.print("Accelerometer range set to: ");
+  switch (accel.getAccelerometerRange()) {
+    case MPU6050_RANGE_2_G:
+      Serial.println("+-2G");
+      break;
+    case MPU6050_RANGE_4_G:
+      Serial.println("+-4G");
+      break;
+    case MPU6050_RANGE_8_G:
+      Serial.println("+-8G");
+      break;
+    case MPU6050_RANGE_16_G:
+      Serial.println("+-16G");
+      break;
+  }
+  accel.setGyroRange(MPU6050_RANGE_500_DEG);
+  Serial.print("Gyro range set to: ");
+  switch (accel.getGyroRange()) {
+    case MPU6050_RANGE_250_DEG:
+      Serial.println("+- 250 deg/s");
+      break;
+    case MPU6050_RANGE_500_DEG:
+      Serial.println("+- 500 deg/s");
+      break;
+    case MPU6050_RANGE_1000_DEG:
+      Serial.println("+- 1000 deg/s");
+      break;
+    case MPU6050_RANGE_2000_DEG:
+      Serial.println("+- 2000 deg/s");
+      break;
+  }
+
+  accel.setFilterBandwidth(MPU6050_BAND_5_HZ);
+  Serial.print("Filter bandwidth set to: ");
+  switch (accel.getFilterBandwidth()) {
+    case MPU6050_BAND_260_HZ:
+      Serial.println("260 Hz");
+      break;
+    case MPU6050_BAND_184_HZ:
+      Serial.println("184 Hz");
+      break;
+    case MPU6050_BAND_94_HZ:
+      Serial.println("94 Hz");
+      break;
+    case MPU6050_BAND_44_HZ:
+      Serial.println("44 Hz");
+      break;
+    case MPU6050_BAND_21_HZ:
+      Serial.println("21 Hz");
+      break;
+    case MPU6050_BAND_10_HZ:
+      Serial.println("10 Hz");
+      break;
+    case MPU6050_BAND_5_HZ:
+      Serial.println("5 Hz");
+      break;
+  }
+
+  Serial.println("Accelerometer Setup");
+  delay(100);
+}
 void setup()
 {
   Serial.begin(9600);
@@ -56,6 +120,7 @@ void setup()
     delay(500);
     Serial.print(".");
   }
+  INITMPU();
   if(!accel.begin())
    {
       Serial.println("No valid sensor found");
@@ -74,11 +139,13 @@ void setup()
 
 void loop()
 {
-  SendData();
+  SendDataTest();
+  
+  //SendData();
   while (SerialGPS.available() > 0)
     if (gps.encode(SerialGPS.read())){
       if(gps.satellites.value()){    
-        //Serial.println(gps.satellites.value());
+        Serial.println(gps.satellites.value());
       }
       if (gps.location.isValid())
       {
@@ -189,7 +256,6 @@ void RecieveData(){
     }
   }
 }
-
 void SendData() {
 
   if(gps.location.isValid() && checkAcceident()){
@@ -208,21 +274,22 @@ void SendData() {
 }
 
 bool checkAcceident(){
-  sensors_event_t event; 
-  accel.getEvent(&event);
+  sensors_event_t event, g, temp;
+  accel.getEvent(&event, &g, &temp);
   float x = event.acceleration.x;
   float y = event.acceleration.y;
   float z = event.acceleration.z;
-  //Serial.print("X: "); Serial.print(x); Serial.print("");
-  //Serial.print("Y: "); Serial.print(y); Serial.print("");
-  //Serial.print("Z: "); Serial.print(z); Serial.print("");
+  //Serial.print("X: "); Serial.print(x); Serial.print("\t");
+  //Serial.print("Y: "); Serial.print(y); Serial.print("\t");
+  //Serial.print("Z: "); Serial.print(z); Serial.print("\n");
   float mag = sqrt(sq(x) + sq(y) + sq(z));
   
   //oldx = x;
   //oldy = y;
   //oldz = z;
-  //Serial.println(mag);
-  if(mag > 20){
+  //Serial.print("Mag: ");
+  Serial.println(mag);
+  if(mag > 12){
     return true;
   }
   else{
@@ -230,3 +297,54 @@ bool checkAcceident(){
   }
   //Serial.println("m/s^2 ");
 }
+
+
+void TestFunc() {
+
+  if(true){
+  //if(checkAcceident()){
+    Serial.print("Sending Message: ");
+    //Serial.println(LatitudeString + " " + LongitudeString);
+
+    LoRa.beginPacket();
+    LoRa.print("28.45084 77.29558");
+    //LoRa.print(LatitudeString + " " + LongitudeString);
+    LoRa.endPacket();
+    delay(200);
+    
+    
+  }
+}
+
+void SendDataTest() {
+
+  if(true && checkAcceident()){
+  //if(checkAcceident()){
+    double lat = 23.207401;
+    double longi = 72.585048;
+    Serial.print("Sending Message: ");
+    
+    lat += (double)random(-1,1)/100;
+    longi += (double)random(-1,1)/100;
+    char a1[12];
+    char a2[12];
+    dtostrf(lat,6,4,a1);
+    dtostrf(longi,6,4,a2);
+    
+    Serial.println(String(a1) + " " + String(a2));
+    LoRa.beginPacket();
+    LoRa.print(String(a1) + " " + String(a2));
+    //LoRa.print(LatitudeString + " " + LongitudeString);
+    LoRa.endPacket();
+    delay(5000);
+    
+    
+  }
+  delay(500);
+}
+
+
+
+
+
+
