@@ -10,6 +10,8 @@
 #define SS 15
 #define RST D4
 #define DIO0 D0
+#define TRIG_PIN 5 // D1 on NodeMCU
+#define ECHO_PIN 4 // D2 on NodeMCU
 
 //const char* ssid = "KAPIL";
 //const char* password = "pooja8279";
@@ -65,10 +67,32 @@ void loop()
   delay(200);
   
 }
+void run_ultrasonic(){
+   digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  
+  // Read the echo pin, returns the sound wave travel time in microseconds
+  long duration = pulseIn(ECHO_PIN, HIGH);
+  
+  // Calculate the distance
+  // Speed of sound wave divided by 2 (there and back)
+  float distance = duration * 0.034 / 2;
+
+  // Print the distance to the Serial Monitor
+  Serial.print("Distance: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+  
+  // Delay before the next reading
+  return distance;
+}
 void RecieveData(){
   stringComplete = false;
   int packetSize = LoRa.parsePacket();
-  if (packetSize) {
+  if (packetSize && run_ultrasonic()) {
     while (LoRa.available()) {
       Serial.print("Message Received : ");
       String coord = LoRa.readString();
